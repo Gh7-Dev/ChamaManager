@@ -115,6 +115,26 @@ public class MemberDAO implements CrudOperations<Member> {
         member.setDateJoined(dateJoined);
         return member;
     }
+    public Member findByUsername(String username) {
+    String sql = "SELECT * FROM members WHERE username = ?";
+
+    try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+        ps.setString(1, username);
+
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return mapRow(rs);
+            }
+        }
+
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+
+    return null;
+}
 
     // Additional lookup methods pending — to be added once finalized.
 }
