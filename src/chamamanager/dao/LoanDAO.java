@@ -4,6 +4,7 @@
  */
 package chamamanager.dao;
 
+import chamamanager.exceptions.DataAccessException;
 import chamamanager.model.Loan;
 import chamamanager.util.DBConnection;
 import java.sql.Connection;
@@ -28,8 +29,7 @@ public class LoanDAO implements CrudOperations<Loan> {
         String sql = "INSERT INTO loans "
                 + "(member_id, principal, interest_rate, date_issued, due_date, status) "
                 + "VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getPrincipal());
             ps.setDouble(3, item.getInterestRate());
@@ -38,15 +38,15 @@ public class LoanDAO implements CrudOperations<Loan> {
             ps.setString(6, item.getStatus());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Create a new loan", ex);
+
         }
     }
 
     @Override
     public Loan getById(int id) {
         String sql = "SELECT * FROM loans WHERE loan_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -54,7 +54,7 @@ public class LoanDAO implements CrudOperations<Loan> {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not find the loan", ex);
         }
         return null;
     }
@@ -63,14 +63,12 @@ public class LoanDAO implements CrudOperations<Loan> {
     public List<Loan> getAll() {
         List<Loan> loans = new ArrayList<>();
         String sql = "SELECT * FROM loans";
-        try (Connection conn = DBConnection.getConnection();
-                Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
+        try (Connection conn = DBConnection.getConnection(); Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 loans.add(mapRow(rs));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not find all the loans", ex);
         }
         return loans;
     }
@@ -80,8 +78,7 @@ public class LoanDAO implements CrudOperations<Loan> {
         String sql = "UPDATE loans SET member_id = ?, principal = ?, "
                 + "interest_rate = ?, date_issued = ?, due_date = ?, status = ? "
                 + "WHERE loan_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getPrincipal());
             ps.setDouble(3, item.getInterestRate());
@@ -91,19 +88,18 @@ public class LoanDAO implements CrudOperations<Loan> {
             ps.setInt(7, item.getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not update the loan", ex);
         }
     }
 
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM loans WHERE loan_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not delete the loan", ex);
         }
     }
 
