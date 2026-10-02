@@ -115,6 +115,93 @@ public class ContributionDAO implements CrudOperations<Contribution> {
         contribution.setStatus(rs.getString("status"));
         return contribution;
     }
+     public List<Contribution> findByMemberId(int memberId) {
+        List<Contribution> list = new ArrayList<>();
+        String sql = "SELECT * FROM contributions WHERE member_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, memberId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return list;
+    }
+
+    public double getTotalByMemberId(int memberId) {
+        String sql = "SELECT SUM(amount) as total FROM contributions WHERE member_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, memberId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("total");
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return 0.0;
+    }
+
+    public boolean isAlreadyPaid(int memberId, String period) {
+        String sql = "SELECT COUNT(*) FROM contributions WHERE member_id = ? AND period = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, memberId);
+            ps.setString(2, period);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return false;
+    }
+
+    public double getTotalContributions() {
+        String sql = "SELECT SUM(amount) as total FROM contributions";
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getDouble("total");
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return 0.0;
+    }
+
+    public List<Contribution> findByPeriod(String period) {
+        List<Contribution> list = new ArrayList<>();
+        String sql = "SELECT * FROM contributions WHERE period = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, period);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+        return list;
+    }
+}
+    
+    
+            
+        
+        
+    
 
     // Additional lookup methods pending — to be added once finalized.
-}
+

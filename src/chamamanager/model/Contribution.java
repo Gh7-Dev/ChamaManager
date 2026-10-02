@@ -1,7 +1,4 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+
 package chamamanager.model;
 
 import java.time.LocalDate;
@@ -67,4 +64,15 @@ public class Contribution {
     public void setStatus(String status) {
         this.status = status;
     }
+
+
+
+ public int getContributionId(){
+    return this.id;
+
+}
+
+ public void setContributionId(int contributionId){
+    this.id = contributionId;
+ }
 }
