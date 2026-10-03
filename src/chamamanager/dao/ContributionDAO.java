@@ -4,6 +4,7 @@
  */
 package chamamanager.dao;
 
+import chamamanager.exceptions.DataAccessException;
 import chamamanager.model.Contribution;
 import chamamanager.util.DBConnection;
 import java.sql.Connection;
@@ -28,8 +29,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
         String sql = "INSERT INTO contributions "
                 + "(member_id, amount, date_paid, period, status) "
                 + "VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getAmount());
             ps.setDate(3, Date.valueOf(item.getDatePaid()));
@@ -37,15 +37,14 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             ps.setString(5, item.getStatus());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not create a contribution", ex);
         }
     }
 
     @Override
     public Contribution getById(int id) {
         String sql = "SELECT * FROM contributions WHERE contribution_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -53,7 +52,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Couuld not find contribution", ex);
         }
         return null;
     }
@@ -62,14 +61,13 @@ public class ContributionDAO implements CrudOperations<Contribution> {
     public List<Contribution> getAll() {
         List<Contribution> contributions = new ArrayList<>();
         String sql = "SELECT * FROM contributions";
-        try (Connection conn = DBConnection.getConnection();
-                Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
+        try (Connection conn = DBConnection.getConnection(); Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 contributions.add(mapRow(rs));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not find all the contributions", ex);
+
         }
         return contributions;
     }
@@ -78,8 +76,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
     public void update(Contribution item) {
         String sql = "UPDATE contributions SET member_id = ?, amount = ?, "
                 + "date_paid = ?, period = ?, status = ? WHERE contribution_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getAmount());
             ps.setDate(3, Date.valueOf(item.getDatePaid()));
@@ -88,19 +85,19 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             ps.setInt(6, item.getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not update contribution", ex);
+
         }
     }
 
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM contributions WHERE contribution_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not delete contribution", ex);
         }
     }
 
