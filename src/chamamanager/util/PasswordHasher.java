@@ -1,40 +1,42 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package chamamanager.util;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 
 /**
- * Provides password hashing functionality using standard Java libraries.
+ * Provides password hashing using PBKDF2 (PBKDF2WithHmacSHA256).
  *
- * Passwords are hashed with SHA-256 so that plain-text passwords are not
- * stored. This is a straightforward, dependency-free hashing approach.
+ * Stored format: iterations:salt_base64:hash_base64 Each password gets its own
+ * random salt, and hashing is deliberately slow so that guessing passwords is
+ * expensive.
  *
  * @author gh7
  */
 public class PasswordHasher {
 
+    private static final int ITERATIONS = 600_000;
+    private static final int SALT_BYTES = 16;
+    private static final int KEY_BITS = 256;
+
     /**
-     * Hashes the given plain-text password to a hex string.
+     * Hashes the given plain-text password with a new random salt.
      *
      * @param password the plain-text password to hash
-     * @return the SHA-256 hex digest of the password
-     * @throws IllegalStateException if the SHA-256 algorithm is unavailable on
-     * the runtime platform
+     * @return a string in the form iterations:salt_base64:hash_base64
      */
     public static String hash(String password) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(
-                    password.getBytes(StandardCharsets.UTF_8));
-            return toHex(hash);
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException(
-                    "SHA-256 hashing algorithm is not available.", ex);
+            byte[] salt = new byte[SALT_BYTES];
+            new SecureRandom().nextBytes(salt);
+            byte[] hash = pbkdf2(password.toCharArray(), salt, ITERATIONS);
+            return ITERATIONS + ":"
+                    + Base64.getEncoder().encodeToString(salt) + ":"
+                    + Base64.getEncoder().encodeToString(hash);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Password hashing failed.", ex);
         }
     }
 
@@ -42,23 +44,32 @@ public class PasswordHasher {
      * Verifies a plain-text password against a stored hash.
      *
      * @param password the plain-text password to check
-     * @param hashedPassword the previously stored hash to compare against
+     * @param hashedPassword the stored value produced by {@link #hash}
      * @return {@code true} if the password matches the stored hash
      */
     public static boolean verify(String password, String hashedPassword) {
-        if (hashedPassword == null) {
+        if (password == null || hashedPassword == null) {
             return false;
         }
-        return MessageDigest.isEqual(
-                hash(password).getBytes(StandardCharsets.UTF_8),
-                hashedPassword.getBytes(StandardCharsets.UTF_8));
+        try {
+            String[] parts = hashedPassword.split(":");
+            if (parts.length != 3) {
+                return false;
+            }
+            int iterations = Integer.parseInt(parts[0]);
+            byte[] salt = Base64.getDecoder().decode(parts[1]);
+            byte[] expected = Base64.getDecoder().decode(parts[2]);
+            byte[] actual = pbkdf2(password.toCharArray(), salt, iterations);
+            return MessageDigest.isEqual(expected, actual);
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
-    private static String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+    private static byte[] pbkdf2(char[] password, byte[] salt, int iterations)
+            throws Exception {
+        PBEKeySpec spec = new PBEKeySpec(password, salt, iterations, KEY_BITS);
+        return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                .generateSecret(spec).getEncoded();
     }
 }
