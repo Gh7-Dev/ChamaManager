@@ -1,0 +1,3 @@
+db.url=jdbc:mysql://localhost:3306/chama_manager
+db.user=root
+db.password=
