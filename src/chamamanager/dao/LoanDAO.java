@@ -113,10 +113,10 @@ public class LoanDAO implements CrudOperations<Loan> {
         loan.setMemberId(rs.getInt("member_id"));
         loan.setPrincipal(rs.getDouble("principal"));
         loan.setInterestRate(rs.getDouble("interest_rate"));
-        LocalDate dateIssued = rs.getDate("date_issued").toLocalDate();
-        loan.setDateIssued(dateIssued);
-        LocalDate dueDate = rs.getDate("due_date").toLocalDate();
-        loan.setDueDate(dueDate);
+        java.sql.Date dIssued = rs.getDate("date_issued");
+        loan.setDateIssued(dIssued == null ? null : dIssued.toLocalDate());
+        java.sql.Date dDue = rs.getDate("due_date");
+        loan.setDueDate(dDue == null ? null : dDue.toLocalDate());
         loan.setStatus(rs.getString("status"));
         return loan;
     }
