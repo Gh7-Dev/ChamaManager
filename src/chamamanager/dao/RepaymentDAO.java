@@ -4,6 +4,7 @@
  */
 package chamamanager.dao;
 
+import chamamanager.exceptions.DataAccessException;
 import chamamanager.model.Repayment;
 import chamamanager.util.DBConnection;
 import java.sql.Connection;
@@ -27,22 +28,20 @@ public class RepaymentDAO implements CrudOperations<Repayment> {
     public void create(Repayment item) {
         String sql = "INSERT INTO repayments "
                 + "(loan_id, amount_paid, date_paid) VALUES (?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getLoanId());
             ps.setDouble(2, item.getAmountPaid());
             ps.setDate(3, Date.valueOf(item.getDatePaid()));
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not create new payment", ex);
         }
     }
 
     @Override
     public Repayment getById(int id) {
         String sql = "SELECT * FROM repayments WHERE repayment_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -50,7 +49,7 @@ public class RepaymentDAO implements CrudOperations<Repayment> {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not find repayment", ex);
         }
         return null;
     }
@@ -59,14 +58,12 @@ public class RepaymentDAO implements CrudOperations<Repayment> {
     public List<Repayment> getAll() {
         List<Repayment> repayments = new ArrayList<>();
         String sql = "SELECT * FROM repayments";
-        try (Connection conn = DBConnection.getConnection();
-                Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
+        try (Connection conn = DBConnection.getConnection(); Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 repayments.add(mapRow(rs));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not get all the repayments", ex);
         }
         return repayments;
     }
@@ -75,27 +72,25 @@ public class RepaymentDAO implements CrudOperations<Repayment> {
     public void update(Repayment item) {
         String sql = "UPDATE repayments SET loan_id = ?, amount_paid = ?, "
                 + "date_paid = ? WHERE repayment_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, item.getLoanId());
             ps.setDouble(2, item.getAmountPaid());
             ps.setDate(3, Date.valueOf(item.getDatePaid()));
             ps.setInt(4, item.getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not update the exceptions", ex);
         }
     }
 
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM repayments WHERE repayment_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not delete repayment", ex);
         }
     }
 

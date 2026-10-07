@@ -4,6 +4,7 @@
  */
 package chamamanager.dao;
 
+import chamamanager.exceptions.DataAccessException;
 import chamamanager.model.Member;
 import chamamanager.util.DBConnection;
 import java.sql.Connection;
@@ -28,8 +29,7 @@ public class MemberDAO implements CrudOperations<Member> {
         String sql = "INSERT INTO members "
                 + "(full_name, username, password_hash, phone, date_joined) "
                 + "VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, item.getFullName());
             ps.setString(2, item.getUsername());
             ps.setString(3, item.getPasswordHash());
@@ -37,15 +37,14 @@ public class MemberDAO implements CrudOperations<Member> {
             ps.setDate(5, Date.valueOf(item.getDateJoined()));
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not add new member", ex);
         }
     }
 
     @Override
     public Member getById(int id) {
         String sql = "SELECT * FROM members WHERE member_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -53,7 +52,7 @@ public class MemberDAO implements CrudOperations<Member> {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not find new member", ex);
         }
         return null;
     }
@@ -62,14 +61,12 @@ public class MemberDAO implements CrudOperations<Member> {
     public List<Member> getAll() {
         List<Member> members = new ArrayList<>();
         String sql = "SELECT * FROM members";
-        try (Connection conn = DBConnection.getConnection();
-                Statement st = conn.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
+        try (Connection conn = DBConnection.getConnection(); Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 members.add(mapRow(rs));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not retieve the members", ex);
         }
         return members;
     }
@@ -78,8 +75,7 @@ public class MemberDAO implements CrudOperations<Member> {
     public void update(Member item) {
         String sql = "UPDATE members SET full_name = ?, username = ?, "
                 + "password_hash = ?, phone = ?, date_joined = ? WHERE member_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, item.getFullName());
             ps.setString(2, item.getUsername());
             ps.setString(3, item.getPasswordHash());
@@ -88,19 +84,18 @@ public class MemberDAO implements CrudOperations<Member> {
             ps.setInt(6, item.getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not update the member details", ex);
         }
     }
 
     @Override
     public void delete(int id) {
         String sql = "DELETE FROM members WHERE member_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            throw new DataAccessException("Could not delete a member", ex);
         }
     }
 
