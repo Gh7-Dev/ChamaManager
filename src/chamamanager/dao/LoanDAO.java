@@ -33,12 +33,13 @@ public class LoanDAO implements CrudOperations<Loan> {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getPrincipal());
             ps.setDouble(3, item.getInterestRate());
-            ps.setDate(4, Date.valueOf(item.getDateIssued()));
-            ps.setDate(5, Date.valueOf(item.getDueDate()));
+            // PENDING loans have no dates yet — bind NULL instead of NPE.
+            ps.setDate(4, item.getDateIssued() == null ? null : Date.valueOf(item.getDateIssued()));
+            ps.setDate(5, item.getDueDate() == null ? null : Date.valueOf(item.getDueDate()));
             ps.setString(6, item.getStatus());
             ps.executeUpdate();
         } catch (SQLException ex) {
-            throw new DataAccessException("Create a new loan", ex);
+            throw new DataAccessException("Create a new loan failed", ex);
 
         }
     }
@@ -82,8 +83,9 @@ public class LoanDAO implements CrudOperations<Loan> {
             ps.setInt(1, item.getMemberId());
             ps.setDouble(2, item.getPrincipal());
             ps.setDouble(3, item.getInterestRate());
-            ps.setDate(4, Date.valueOf(item.getDateIssued()));
-            ps.setDate(5, Date.valueOf(item.getDueDate()));
+            // PENDING loans have no dates yet — bind NULL instead of NPE. Same rule as create()/mapRow().
+            ps.setDate(4, item.getDateIssued() == null ? null : Date.valueOf(item.getDateIssued()));
+            ps.setDate(5, item.getDueDate() == null ? null : Date.valueOf(item.getDueDate()));
             ps.setString(6, item.getStatus());
             ps.setInt(7, item.getId());
             ps.executeUpdate();
@@ -109,10 +111,10 @@ public class LoanDAO implements CrudOperations<Loan> {
         loan.setMemberId(rs.getInt("member_id"));
         loan.setPrincipal(rs.getDouble("principal"));
         loan.setInterestRate(rs.getDouble("interest_rate"));
-        LocalDate dateIssued = rs.getDate("date_issued").toLocalDate();
-        loan.setDateIssued(dateIssued);
-        LocalDate dueDate = rs.getDate("due_date").toLocalDate();
-        loan.setDueDate(dueDate);
+        java.sql.Date dIssued = rs.getDate("date_issued");
+        loan.setDateIssued(dIssued == null ? null : dIssued.toLocalDate());
+        java.sql.Date dDue = rs.getDate("due_date");
+        loan.setDueDate(dDue == null ? null : dDue.toLocalDate());
         loan.setStatus(rs.getString("status"));
         return loan;
     }
