@@ -110,6 +110,47 @@ public class MemberDAO implements CrudOperations<Member> {
         member.setDateJoined(dateJoined);
         return member;
     }
+    public Member findByUsername(String username) {
+    String sql = "SELECT * FROM members WHERE username = ?";
 
+    try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+        ps.setString(1, username);
+
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return mapRow(rs);
+            }
+        }
+
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+
+    return null;
+}
+    public List<Member> searchByName(String name) {
+    List<Member> members = new ArrayList<>();
+
+    String sql = "SELECT * FROM members WHERE full_name LIKE ?";
+
+    try (Connection conn = DBConnection.getConnection();
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+        ps.setString(1, "%" + name + "%");
+
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                members.add(mapRow(rs));
+            }
+        }
+
+    } catch (SQLException ex) {
+        ex.printStackTrace();
+    }
+
+    return members;
+}
     // Additional lookup methods pending — to be added once finalized.
 }
