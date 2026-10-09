@@ -5,8 +5,12 @@
 package chamamanager.presentation;
 import chamamanager.exceptions.InvalidLoginException;
 import chamamanager.logic.AuthService;
+import chamamanager.dao.MemberDAO;
+import chamamanager.model.Member;
+import chamamanager.presentation.TreasurerDashboard;
 import javax.swing.*;
 import java.awt.*;
+
 
 /**
  *
@@ -16,6 +20,9 @@ public class LoginFrame extends JFrame {
     private JTextField txtUsername;
     private JPasswordField txtPassword;
     private JButton btnLogin;
+    
+    
+    private MemberDAO memberDAO = new MemberDAO();
     
     private AuthService authService = new AuthService();
     public LoginFrame(){
@@ -30,17 +37,17 @@ public class LoginFrame extends JFrame {
         JLabel username = new JLabel("Username");
         username.setBounds(50,40,100,25);
         panel.add(username);
-        JTextField txtusername=new JTextField();
-        txtusername.setBounds(150,40,180,25);
-        panel.add(txtusername);
+        txtUsername=new JTextField();
+        txtUsername.setBounds(150,40,180,25);
+        panel.add(txtUsername);
         
         JLabel lblpassword = new JLabel("Password");
         lblpassword.setBounds(50,80,100,25);
         panel.add(lblpassword);
         
-        JPasswordField txtpassword= new JPasswordField();
-        txtpassword.setBounds(150,80,180,25);
-        panel.add(txtpassword);
+        txtPassword= new JPasswordField();
+        txtPassword.setBounds(150,80,180,25);
+        panel.add(txtPassword);
         
         btnLogin = new JButton("Login");
         btnLogin.setBounds(150,130,100,30);
@@ -51,49 +58,85 @@ public class LoginFrame extends JFrame {
 
         add(panel);
     }
+//Get both username and password, authenticate and choose which dashboard to use
+    
+private void login() {
 
-    private void login() {
+    String username = txtUsername.getText().trim();
+    String password = new String(txtPassword.getPassword());
 
-        String username = txtUsername.getText();
-        String password = new String(txtPassword.getPassword());
+    if (username.isEmpty() || password.isEmpty()) {
+        JOptionPane.showMessageDialog(
+                this,
+                "Please enter username and password."
+        );
+        return;
+    }
 
-        if (username.isEmpty() || password.isEmpty()) {
+    try {
+        boolean success = authService.login(username, password);
+
+        if (success) {
+
             JOptionPane.showMessageDialog(
                     this,
-                    "Please enter username and password."
+                    "Login successful!"
             );
-            return;
+
+            if (username.equalsIgnoreCase("treasurer")) {
+
+    JOptionPane.showMessageDialog(
+            this,
+            "Treasurer login successful. Dashboard is under development."
+    );
+
+        } else {
+
+                Member member =
+                        memberDAO.findByUsername(username);
+
+                if (member == null) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Unable to retrieve member details.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                    return;
+                }
+
+                MemberDashboard dashboard =
+                        new MemberDashboard(member.getFullName());
+
+                dashboard.setVisible(true);
+                this.dispose();
+            }
         }
 
-        try {
+    } catch (InvalidLoginException ex) {
 
-            boolean success = authService.login(username, password);
+        JOptionPane.showMessageDialog(
+                this,
+                ex.getMessage(),
+                "Login Failed",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+}
+}
 
-            if (success) {
 
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Login successful!"
-                );
+
+    
+
 
                 // Dashboard routing will be added here.
                 
-            }
-
-        } catch (InvalidLoginException ex) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    ex.getMessage(),
-                    "Login Failed",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
-    }
+           
 
     
     
-}
+
         
         
 
