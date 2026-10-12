@@ -2,16 +2,21 @@ package chamamanager.dao;
 
 import chamamanager.model.Contribution;
 import chamamanager.model.Contribution.Status;
+import chamamanager.model.Member;
 import chamamanager.exceptions.DataAccessException;
 import chamamanager.util.DBConnection;
+
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -26,8 +31,10 @@ import java.util.List;
 
 /**
  * Database access for contributions, Treasurer approval (contributions and loans),
- * report export, and the three Swing screens (nested classes at the bottom).
+ * report export (CSV / PDF), the Treasurer class (extends Member), and the three
+ * Swing screens (nested classes at the bottom).
  * Assumes util.DBConnection.getConnection() returns a MySQL Connection.
+ * PDF export is built in (no external library needed).
  */
 public class ContributionDAO implements CrudOperations<Contribution> {
 
@@ -207,7 +214,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
         }
     }
 
-    // ----- Report export (CSV / TXT) -----
+    // ----- Report export (CSV / PDF) -----
 
     public void exportCSV(List<Contribution> list, File file) throws IOException {
         try (PrintWriter out = new PrintWriter(file, "UTF-8")) {
@@ -220,24 +227,95 @@ public class ContributionDAO implements CrudOperations<Contribution> {
         }
     }
 
-    public void exportTXT(List<Contribution> list, File file) throws IOException {
+    /** Writes a simple multi-page A4 PDF report (built-in, no library needed). */
+    public void exportPDF(List<Contribution> list, File file) throws IOException {
+        String rule = new String(new char[72]).replace('\0', '-');
         BigDecimal approved = BigDecimal.ZERO;
-        try (PrintWriter out = new PrintWriter(file, "UTF-8")) {
-            out.println("CHAMA MANAGER - CONTRIBUTIONS REPORT");
-            out.println("=====================================================================");
-            out.printf("%-5s %-8s %-12s %-12s %-16s %-10s%n",
-                    "ID", "Member", "Amount", "Date paid", "Period", "Status");
-            out.println("---------------------------------------------------------------------");
-            for (Contribution c : list) {
-                out.printf("%-5d %-8d %-12s %-12s %-16s %-10s%n", c.getId(), c.getMemberId(),
-                        c.getAmount(), c.getContributionDate(), c.getPeriod(), c.getStatus());
-                if (c.getStatus() == Status.CONFIRMED) {
-                    approved = approved.add(c.getAmount());
-                }
+        List<String> lines = new ArrayList<>();
+        lines.add("CHAMA MANAGER - CONTRIBUTIONS REPORT");
+        lines.add("");
+        lines.add(String.format("%-5s %-8s %-12s %-12s %-20s %-10s",
+                "ID", "Member", "Amount", "Date paid", "Period", "Status"));
+        lines.add(rule);
+        for (Contribution c : list) {
+            lines.add(String.format("%-5d %-8d %-12s %-12s %-20s %-10s",
+                    c.getId(), c.getMemberId(), c.getAmount().toPlainString(),
+                    String.valueOf(c.getContributionDate()),
+                    c.getPeriod() == null ? "" : c.getPeriod(),
+                    c.getStatus().name()));
+            if (c.getStatus() == Status.CONFIRMED) {
+                approved = approved.add(c.getAmount());
             }
-            out.println("---------------------------------------------------------------------");
-            out.println("Records: " + list.size() + "   Approved total: " + approved);
         }
+        lines.add(rule);
+        lines.add("Records: " + list.size() + "   Approved total: " + approved.toPlainString());
+        writeSimplePdf(lines, file);
+    }
+
+    /** Minimal PDF writer: Courier 9pt, A4, 60 lines per page. */
+    private void writeSimplePdf(List<String> lines, File file) throws IOException {
+        final int perPage = 60;
+        int pages = Math.max(1, (lines.size() + perPage - 1) / perPage);
+
+        // Objects: 1 catalog, 2 page tree, 3 font, then for each page i: page = 4+2i, content = 5+2i
+        List<String> objs = new ArrayList<>();
+        objs.add("<< /Type /Catalog /Pages 2 0 R >>");
+        StringBuilder kids = new StringBuilder();
+        for (int i = 0; i < pages; i++) {
+            kids.append(4 + 2 * i).append(" 0 R ");
+        }
+        objs.add("<< /Type /Pages /Kids [" + kids + "] /Count " + pages + " >>");
+        objs.add("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
+
+        for (int i = 0; i < pages; i++) {
+            StringBuilder content = new StringBuilder("BT\n/F1 9 Tf\n12 TL\n40 800 Td\n");
+            int from = i * perPage;
+            int to = Math.min(lines.size(), from + perPage);
+            for (int k = from; k < to; k++) {
+                content.append('(').append(pdfEscape(lines.get(k))).append(") Tj\nT*\n");
+            }
+            content.append("ET");
+            objs.add("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+                    + "/Resources << /Font << /F1 3 0 R >> >> /Contents " + (5 + 2 * i) + " 0 R >>");
+            objs.add("<< /Length " + content.length() + " >>\nstream\n" + content + "\nendstream");
+        }
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write("%PDF-1.4\n".getBytes(StandardCharsets.ISO_8859_1));
+        int[] offsets = new int[objs.size()];
+        for (int i = 0; i < objs.size(); i++) {
+            offsets[i] = out.size();
+            out.write(((i + 1) + " 0 obj\n" + objs.get(i) + "\nendobj\n")
+                    .getBytes(StandardCharsets.ISO_8859_1));
+        }
+        int xref = out.size();
+        StringBuilder x = new StringBuilder("xref\n0 " + (objs.size() + 1) + "\n");
+        x.append("0000000000 65535 f \n");
+        for (int off : offsets) {
+            x.append(String.format("%010d 00000 n \n", off));
+        }
+        x.append("trailer\n<< /Size ").append(objs.size() + 1).append(" /Root 1 0 R >>\n")
+         .append("startxref\n").append(xref).append("\n%%EOF\n");
+        out.write(x.toString().getBytes(StandardCharsets.ISO_8859_1));
+
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            out.writeTo(fos);
+        }
+    }
+
+    /** Escapes text for a PDF string and replaces characters the built-in font cannot show. */
+    private static String pdfEscape(String s) {
+        StringBuilder b = new StringBuilder();
+        for (char ch : s.toCharArray()) {
+            if (ch == '\\' || ch == '(' || ch == ')') {
+                b.append('\\').append(ch);
+            } else if (ch < 32 || ch > 126) {
+                b.append('?');
+            } else {
+                b.append(ch);
+            }
+        }
+        return b.toString();
     }
 
     // ----- Helpers -----
@@ -276,6 +354,43 @@ public class ContributionDAO implements CrudOperations<Contribution> {
     // Run this class to open the Treasurer dashboard
     public static void main(String[] args) {
         Contribution.showTreasurerDashboard();
+    }
+
+    // ================= TREASURER (extends Member) =================
+
+    /**
+     * The Treasurer is a Member with extra duties: approving or rejecting
+     * contributions and loans, and reading the approved total.
+     *
+     */
+    public static class Treasurer extends Member {
+
+        private final ContributionDAO dao = new ContributionDAO();
+
+        /** Your Member class has a no-argument constructor, so the Treasurer uses it. */
+        public Treasurer() {
+            super();
+        }
+
+        public boolean approveContribution(int id) throws SQLException {
+            return dao.approveContribution(id);
+        }
+
+        public boolean rejectContribution(int id) throws SQLException {
+            return dao.rejectContribution(id);
+        }
+
+        public boolean approveLoan(int loanId) throws SQLException {
+            return dao.approveLoan(loanId);
+        }
+
+        public boolean rejectLoan(int loanId) throws SQLException {
+            return dao.rejectLoan(loanId);
+        }
+
+        public BigDecimal getApprovedTotal() throws SQLException {
+            return dao.getApprovedTotal();
+        }
     }
 
     // ================= SCREEN 1: RECORD CONTRIBUTION =================
@@ -389,7 +504,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             setLocationRelativeTo(null);
 
             JButton csvBtn = new JButton("Export CSV");
-            JButton txtBtn = new JButton("Export TXT");
+            JButton pdfBtn = new JButton("Export PDF");
             JButton refreshBtn = new JButton("Refresh");
 
             JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -397,7 +512,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             top.add(filterBox);
             top.add(refreshBtn);
             top.add(csvBtn);
-            top.add(txtBtn);
+            top.add(pdfBtn);
 
             add(top, BorderLayout.NORTH);
             add(new JScrollPane(new JTable(model)), BorderLayout.CENTER);
@@ -406,7 +521,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             filterBox.addActionListener(e -> load());
             refreshBtn.addActionListener(e -> load());
             csvBtn.addActionListener(e -> export(true));
-            txtBtn.addActionListener(e -> export(false));
+            pdfBtn.addActionListener(e -> export(false));
 
             load();
         }
@@ -433,13 +548,13 @@ public class ContributionDAO implements CrudOperations<Contribution> {
                 return;
             }
             JFileChooser fc = new JFileChooser();
-            fc.setSelectedFile(new File(csv ? "contributions.csv" : "contributions.txt"));
+            fc.setSelectedFile(new File(csv ? "contributions.csv" : "contributions.pdf"));
             if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
                 return;
             }
             try {
                 if (csv) dao.exportCSV(current, fc.getSelectedFile());
-                else dao.exportTXT(current, fc.getSelectedFile());
+                else dao.exportPDF(current, fc.getSelectedFile());
                 JOptionPane.showMessageDialog(this, "Exported to " + fc.getSelectedFile().getName());
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Export failed: " + ex.getMessage());
@@ -451,6 +566,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
 
     public static class TreasurerDashboardFrame extends JFrame {
 
+        private final Treasurer treasurer;
         private final ContributionDAO dao = new ContributionDAO();
         private final DefaultTableModel contribModel = new DefaultTableModel(
                 new String[]{"ID", "Member", "Amount", "Date paid", "Period", "Status"}, 0) {
@@ -464,8 +580,14 @@ public class ContributionDAO implements CrudOperations<Contribution> {
         private final JTable loanTable = new JTable(loanModel);
         private final JLabel totalLabel = new JLabel(" ");
 
+        /** Opens the dashboard with a default Treasurer. Replace with the logged-in Treasurer when you have login. */
         public TreasurerDashboardFrame() {
+            this(new Treasurer());
+        }
+
+        public TreasurerDashboardFrame(Treasurer treasurer) {
             super("Treasurer Dashboard");
+            this.treasurer = treasurer;
             setDefaultCloseOperation(EXIT_ON_CLOSE);
             setSize(760, 480);
             setLocationRelativeTo(null);
@@ -521,9 +643,9 @@ public class ContributionDAO implements CrudOperations<Contribution> {
             try {
                 boolean ok;
                 if (contributions) {
-                    ok = approve ? dao.approveContribution(id) : dao.rejectContribution(id);
+                    ok = approve ? treasurer.approveContribution(id) : treasurer.rejectContribution(id);
                 } else {
-                    ok = approve ? dao.approveLoan(id) : dao.rejectLoan(id);
+                    ok = approve ? treasurer.approveLoan(id) : treasurer.rejectLoan(id);
                 }
                 if (!ok) {
                     JOptionPane.showMessageDialog(this, "That record is no longer pending.");
@@ -545,7 +667,7 @@ public class ContributionDAO implements CrudOperations<Contribution> {
                 for (Object[] row : dao.getPendingLoans()) {
                     loanModel.addRow(row);
                 }
-                totalLabel.setText("  Approved contributions total: " + dao.getApprovedTotal());
+                totalLabel.setText("  Approved contributions total: " + treasurer.getApprovedTotal());
             } catch (SQLException ex) {
                 JOptionPane.showMessageDialog(this, "Database error: " + ex.getMessage());
             }
