@@ -23,21 +23,27 @@ public class AuthService {
      * @return {@code true} if the credentials are valid
      * @throws InvalidLoginException if the credentials are not valid
      */
-    public boolean login(String username, String password)
+    
+public Member login(String username, String password)
         throws InvalidLoginException {
 
     Member member = memberDAO.findByUsername(username);
 
     if (member == null) {
-        throw new InvalidLoginException("Invalid username or password");
+        throw new InvalidLoginException(
+                "Invalid username or password"
+        );
     }
 
     if (!verifyPassword(password, member.getPasswordHash())) {
-        throw new InvalidLoginException("Invalid username or password");
+        throw new InvalidLoginException(
+                "Invalid username or password"
+        );
     }
 
-    return true;
+    return member;
 }
+
 
     /**
      * Verifies a plain-text password against a stored hash.

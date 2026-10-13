@@ -2,6 +2,7 @@ package chamamanager.presentation;
 import chamamanager.util.PasswordHasher;
 import chamamanager.dao.MemberDAO;
 import chamamanager.model.Member;
+import chamamanager.logic.MemberService;
 import java.time.LocalDate;
 import javax.swing.table.DefaultTableModel;
 import java.util.List;
@@ -23,11 +24,11 @@ public class ManageMembersPanel extends JPanel {
 
     private JTable memberTable;
 
-    private MemberDAO memberDAO;
+    private MemberService memberService;
 
     public ManageMembersPanel() {
 
-        memberDAO = new MemberDAO();
+       memberService = new MemberService(new MemberDAO());
 
         setLayout(null);
 
@@ -121,6 +122,17 @@ public class ManageMembersPanel extends JPanel {
         );
         return;
     }
+    
+if (memberService.usernameExists(username)) {
+    JOptionPane.showMessageDialog(
+            this,
+            "That username is already taken. Choose another.",
+            "Duplicate Username",
+            JOptionPane.WARNING_MESSAGE
+    );
+    return;
+}
+
 
     Member member = new Member();
 
@@ -130,7 +142,7 @@ public class ManageMembersPanel extends JPanel {
     member.setPasswordHash(PasswordHasher.hash(password));
     member.setDateJoined(LocalDate.now());
 
-    memberDAO.create(member);
+    memberService.registerMember(member);
 
     JOptionPane.showMessageDialog(
             this,
@@ -139,7 +151,7 @@ public class ManageMembersPanel extends JPanel {
 }
     private void searchMembers(){
         String name = txtSearch.getText();
-        List<Member> members = memberDAO.searchByName(name);
+        List<Member> members = memberService.searchMembers(name);
         String[]columns = {
             "ID",
             "Full Name",

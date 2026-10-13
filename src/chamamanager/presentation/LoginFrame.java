@@ -1,109 +1,109 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
+
 package chamamanager.presentation;
+
 import chamamanager.exceptions.InvalidLoginException;
 import chamamanager.logic.AuthService;
-import chamamanager.dao.MemberDAO;
 import chamamanager.model.Member;
-import chamamanager.presentation.TreasurerDashboard;
+
 import javax.swing.*;
 import java.awt.*;
 
-
-/**
- *
- * @author gh7
- */
 public class LoginFrame extends JFrame {
+
     private JTextField txtUsername;
     private JPasswordField txtPassword;
     private JButton btnLogin;
-    
-    
-    private MemberDAO memberDAO = new MemberDAO();
-    
-    private AuthService authService = new AuthService();
-    public LoginFrame(){
-        setTitle("Chama Manager-login");
-        setSize(400,250);
+
+    private final JPanel mainPanel;
+    private final JPanel loginPanel;
+
+    private final AuthService authService = new AuthService();
+
+    public LoginFrame() {
+
+        setTitle("Chama Manager - Login");
+        setSize(420, 250);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        // Main panel
-        JPanel panel = new JPanel();
-        panel.setLayout(null);
-        // User Panel
-        JLabel username = new JLabel("Username");
-        username.setBounds(50,40,100,25);
-        panel.add(username);
-        txtUsername=new JTextField();
-        txtUsername.setBounds(150,40,180,25);
-        panel.add(txtUsername);
-        
-        JLabel lblpassword = new JLabel("Password");
-        lblpassword.setBounds(50,80,100,25);
-        panel.add(lblpassword);
-        
-        txtPassword= new JPasswordField();
-        txtPassword.setBounds(150,80,180,25);
-        panel.add(txtPassword);
-        
+
+        mainPanel = new JPanel(new CardLayout());
+        mainPanel.setBackground(new Color(0, 255, 255));
+
+        loginPanel = new JPanel();
+        loginPanel.setLayout(null);
+        loginPanel.setBackground(new Color(0, 255, 255));
+
+        // Username
+        JLabel lblUsername = new JLabel("Username:");
+        lblUsername.setBounds(50, 40, 100, 25);
+        loginPanel.add(lblUsername);
+
+        txtUsername = new JTextField();
+        txtUsername.setBounds(150, 40, 180, 25);
+        loginPanel.add(txtUsername);
+
+        // Password
+        JLabel lblPassword = new JLabel("Password:");
+        lblPassword.setBounds(50, 80, 100, 25);
+        loginPanel.add(lblPassword);
+
+        txtPassword = new JPasswordField();
+        txtPassword.setBounds(150, 80, 180, 25);
+        loginPanel.add(txtPassword);
+
+        // Login button
         btnLogin = new JButton("Login");
-        btnLogin.setBounds(150,130,100,30);
-        panel.add(btnLogin);
-        
-        // Login button action
+        btnLogin.setBounds(150, 130, 100, 30);
+        loginPanel.add(btnLogin);
+
         btnLogin.addActionListener(e -> login());
 
-        add(panel);
-    }
-//Get both username and password, authenticate and choose which dashboard to use
-    
-private void login() {
-
-    String username = txtUsername.getText().trim();
-    String password = new String(txtPassword.getPassword());
-
-    if (username.isEmpty() || password.isEmpty()) {
-        JOptionPane.showMessageDialog(
-                this,
-                "Please enter username and password."
-        );
-        return;
+        // Add the login screen
+        mainPanel.add(loginPanel, "LOGIN");
+        add(mainPanel);
     }
 
-    try {
-        boolean success = authService.login(username, password);
+    private void login() {
 
-        if (success) {
+        String username = txtUsername.getText().trim();
+        String password = new String(txtPassword.getPassword());
 
+        if (username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(
                     this,
-                    "Login successful!"
+                    "Please enter username and password.",
+                    "Missing Information",
+                    JOptionPane.WARNING_MESSAGE
             );
+            return;
+        }
 
-            if (username.equalsIgnoreCase("treasurer")) {
+        try {
+            Member member = authService.login(username, password);
 
+            // Route using the role retrieved from the database
+            if ("TREASURER".equalsIgnoreCase(member.getRole())) {
     JOptionPane.showMessageDialog(
             this,
-            "Treasurer login successful. Dashboard is under development."
+            "Welcome, Treasurer!",
+            "Login Successful",
+            JOptionPane.INFORMATION_MESSAGE
     );
 
-        } else {
+    ManageMembersPanel manageMembers = new ManageMembersPanel();
 
-                Member member =
-                        memberDAO.findByUsername(username);
+    JFrame manageFrame = new JFrame("Chama Manager - Manage Members");
+    manageFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+    manageFrame.setSize(800, 500);
+    manageFrame.setLocationRelativeTo(null);
+    manageFrame.add(manageMembers);
+    manageFrame.setVisible(true);
 
-                if (member == null) {
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "Unable to retrieve member details.",
-                            "Error",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                    return;
-                }
+    this.dispose();
+
+} else {
+
+            
 
                 MemberDashboard dashboard =
                         new MemberDashboard(member.getFullName());
@@ -111,34 +111,24 @@ private void login() {
                 dashboard.setVisible(true);
                 this.dispose();
             }
+
+        } catch (InvalidLoginException ex) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    ex.getMessage(),
+                    "Login Failed",
+                    JOptionPane.ERROR_MESSAGE
+            );
+
+        } catch (chamamanager.exceptions.DataAccessException ex) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "A database error occurred. Please try again.",
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
         }
-
-    } catch (InvalidLoginException ex) {
-
-        JOptionPane.showMessageDialog(
-                this,
-                ex.getMessage(),
-                "Login Failed",
-                JOptionPane.ERROR_MESSAGE
-        );
     }
 }
-}
-
-
-
-    
-
-
-                // Dashboard routing will be added here.
-                
-           
-
-    
-    
-
-        
-        
-
-
-

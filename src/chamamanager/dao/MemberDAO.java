@@ -6,6 +6,7 @@ package chamamanager.dao;
 
 import chamamanager.exceptions.DataAccessException;
 import chamamanager.model.Member;
+import chamamanager.model.Treasurer;
 import chamamanager.util.DBConnection;
 import java.sql.Connection;
 import java.sql.Date;
@@ -25,21 +26,29 @@ import java.util.List;
 public class MemberDAO implements CrudOperations<Member> {
 
     @Override
+ 
     public void create(Member item) {
         String sql = "INSERT INTO members "
-                + "(full_name, username, password_hash, phone, date_joined) "
-                + "VALUES (?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+                + "(full_name, username, password_hash, phone, date_joined, role) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
             ps.setString(1, item.getFullName());
             ps.setString(2, item.getUsername());
             ps.setString(3, item.getPasswordHash());
             ps.setString(4, item.getPhone());
             ps.setDate(5, Date.valueOf(item.getDateJoined()));
+            ps.setString(6, item.getRole());
+
             ps.executeUpdate();
+
         } catch (SQLException ex) {
             throw new DataAccessException("Could not add new member", ex);
         }
     }
+
 
     @Override
     public Member getById(int id) {
@@ -99,18 +108,34 @@ public class MemberDAO implements CrudOperations<Member> {
         }
     }
 
+    
     private Member mapRow(ResultSet rs) throws SQLException {
-        Member member = new Member();
-        member.setId(rs.getInt("member_id"));
-        member.setFullName(rs.getString("full_name"));
-        member.setUsername(rs.getString("username"));
-        member.setPasswordHash(rs.getString("password_hash"));
-        member.setPhone(rs.getString("phone"));
-        LocalDate dateJoined = rs.getDate("date_joined").toLocalDate();
-        member.setDateJoined(dateJoined);
-        return member;
+    String role = rs.getString("role");
+
+    Member member;
+
+    if ("TREASURER".equalsIgnoreCase(role)) {
+        member = new Treasurer();
+    } else {
+        member = new Member();
     }
-    public Member findByUsername(String username) {
+
+    member.setId(rs.getInt("member_id"));
+    member.setFullName(rs.getString("full_name"));
+    member.setUsername(rs.getString("username"));
+    member.setPasswordHash(rs.getString("password_hash"));
+    member.setPhone(rs.getString("phone"));
+
+    java.sql.Date date = rs.getDate("date_joined");
+    if (date != null) {
+        member.setDateJoined(date.toLocalDate());
+    }
+
+    return member;
+}
+
+    
+public Member findByUsername(String username) {
     String sql = "SELECT * FROM members WHERE username = ?";
 
     try (Connection conn = DBConnection.getConnection();
@@ -125,12 +150,16 @@ public class MemberDAO implements CrudOperations<Member> {
         }
 
     } catch (SQLException ex) {
-        ex.printStackTrace();
+        throw new DataAccessException(
+                "Could not find member by username", ex
+        );
     }
 
     return null;
 }
-    public List<Member> searchByName(String name) {
+
+    
+public List<Member> searchByName(String name) {
     List<Member> members = new ArrayList<>();
 
     String sql = "SELECT * FROM members WHERE full_name LIKE ?";
@@ -147,10 +176,13 @@ public class MemberDAO implements CrudOperations<Member> {
         }
 
     } catch (SQLException ex) {
-        ex.printStackTrace();
+        throw new DataAccessException(
+                "Could not search members by name", ex
+        );
     }
 
     return members;
 }
+
     // Additional lookup methods pending — to be added once finalized.
 }
