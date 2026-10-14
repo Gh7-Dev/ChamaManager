@@ -1,17 +1,14 @@
 package chamamanager.model;
 
-import chamamanager.dao.ContributionDAO;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import javax.swing.SwingUtilities;
 
 /**
  * A member's contribution. Every new contribution starts as PENDING
  * until the Treasurer approves or rejects it.
  *
- * The three screens live inside ContributionDAO.java as nested classes;
- * the static methods at the bottom of this class open them.
+ * The period is stored as YYYY-MM (e.g. "2026-10").
+ * This class knows nothing about the DAO or Swing.
  */
 public class Contribution {
 
@@ -23,7 +20,7 @@ public class Contribution {
     private LocalDate contributionDate;
     private String paymentMethod;   // not stored in the database
     private String notes;           // not stored in the database
-    private String period;          // e.g. "October 2026" (stored in contributions.period)
+    private String period;          // YYYY-MM, e.g. "2026-10" (stored in contributions.period)
     private Status status = Status.PENDING;
 
     public Contribution() {
@@ -93,19 +90,5 @@ public class Contribution {
         return "Contribution{id=" + id + ", memberId=" + memberId + ", amount=" + amount
                 + ", date=" + contributionDate + ", period=" + period
                 + ", status=" + status + "}";
-    }
-
-    // ---------- Open the screens from this class ----------
-
-    public static void showRecordScreen() {
-        SwingUtilities.invokeLater(() -> new ContributionDAO.RecordContributionFrame().setVisible(true));
-    }
-
-    public static void showReportsScreen() {
-        SwingUtilities.invokeLater(() -> new ContributionDAO.ReportsFrame().setVisible(true));
-    }
-
-    public static void showTreasurerDashboard() {
-        SwingUtilities.invokeLater(() -> new ContributionDAO.TreasurerDashboardFrame().setVisible(true));
     }
 }
