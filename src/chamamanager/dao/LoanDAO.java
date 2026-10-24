@@ -117,8 +117,8 @@ public class LoanDAO implements CrudOperations<Loan> {
     }
 
     public List<Loan> getByStatus(String status) {
-        return queryLoans("SELECT * FROM loans WHERE member_id =? ORDER BY loan_id",
-                "Could not load the member's loans", status);
+        return queryLoans("SELECT * FROM loans WHERE status = ? ORDER BY loan_id",
+                "Could not load loans by status", status);
     }
 
     public List<Loan> getByMemberAndStatus(int memberId, String status) {
