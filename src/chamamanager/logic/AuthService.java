@@ -1,5 +1,6 @@
 package chamamanager.logic;
-
+import chamamanager.dao.MemberDAO;
+import chamamanager.model.Member;
 import chamamanager.exceptions.InvalidLoginException;
 import chamamanager.util.PasswordHasher;
 
@@ -12,6 +13,7 @@ import chamamanager.util.PasswordHasher;
  * @author gh7
  */
 public class AuthService {
+    private MemberDAO memberDAO = new MemberDAO();
 
     /**
      * Validates a username/password pair.
@@ -21,13 +23,27 @@ public class AuthService {
      * @return {@code true} if the credentials are valid
      * @throws InvalidLoginException if the credentials are not valid
      */
-    public boolean login(String username, String password)
-            throws InvalidLoginException {
-        // TODO: credential verification depends on a lookup method not yet
-        // defined (pending in the DAO layer); add the account lookup once
-        // finalized.
-        return false;
+    
+public Member login(String username, String password)
+        throws InvalidLoginException {
+
+    Member member = memberDAO.findByUsername(username);
+
+    if (member == null) {
+        throw new InvalidLoginException(
+                "Invalid username or password"
+        );
     }
+
+    if (!verifyPassword(password, member.getPasswordHash())) {
+        throw new InvalidLoginException(
+                "Invalid username or password"
+        );
+    }
+
+    return member;
+}
+
 
     /**
      * Verifies a plain-text password against a stored hash.

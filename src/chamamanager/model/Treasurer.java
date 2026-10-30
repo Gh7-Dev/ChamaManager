@@ -9,7 +9,7 @@ package chamamanager.model;
  *
  * @author gh7
  */
-public class Treasurer extends User {
+public class Treasurer extends Member {
 
     @Override
     public String getRole() {

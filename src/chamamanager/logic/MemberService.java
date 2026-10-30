@@ -22,6 +22,11 @@ public class MemberService {
     public MemberService(MemberDAO memberDAO) {
         this.memberDAO = memberDAO;
     }
+    //Checck whetther the username exist
+    public boolean usernameExists(String username) {
+        return memberDAO.findByUsername(username) != null;
+    }
+
 
     /**
      * Registers a new member.
@@ -50,6 +55,11 @@ public class MemberService {
     public List<Member> getAllMembers() {
         return memberDAO.getAll();
     }
+    
+public List<Member> searchMembers(String name) {
+    return memberDAO.searchByName(name);
+}
+
 
     /**
      * Removes a member by identifier.
